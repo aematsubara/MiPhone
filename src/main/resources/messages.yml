@@ -1,0 +1,32 @@
+# IMPORTANT: All messages must be enclosed in quotation marks (either single 'test' or double "test") or the messages will be lost and the file will be reset to 0.
+
+# Don't touch this!
+config-version: 1
+
+reloading: "&6The plugin is being reloaded in another thread, wait a few seconds..."
+reloaded: "&6The plugin has been reloaded!"
+no-permission: "&cYou don't have permission to execute this command!"
+invalid-command: "&cThat command doesn't exist or was used incorrectly! Do /mip to see all commands."
+unknown-player: "&cThat player doesn't exist!"
+only-from-player: "&cThis command must be used by players!"
+unknown-error: "&cAn error ocurred"
+
+default-color-if-color-list-is-empty: "&cNo color exists in config.yml, using the default one by the plugin."
+color-list-is-empty: "&cNo color is specified in config.yml, report this to an administrator!"
+
+random-color-if-color-does-not-exists: "&cThat color doesn't exists, using a random one from config.yml!"
+color-does-not-exists: "&cThat color doesn't exists!"
+
+no-color-specified: "&cNo color was specified, using a random one from config.yml!"
+
+empty-battery: "&cCharge your phone!"
+broken: "&cYour phone is broken!"
+already-charging: "&cThis phone is being charged!"
+not-your-phone: "&cThis is not your phone!"
+
+cracked: "&cYour phone is damaged and cracked!"
+
+charger-at-top: "&cthis charger can only be placed on top of a block!"
+only-on-chargers: "&cYou can only place phones in wireless chargers."
+charger-in-use: "&cThis charger is already being used by a phone!"
+phone-already-charging: "&cThis phone is already charging on another charger (is this a copy?)."

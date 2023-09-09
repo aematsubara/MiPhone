@@ -1,0 +1,20 @@
+name: MiPhone
+version: ${project.version}
+main: me.matsubara.miphone.MiPhonePlugin
+api-version: 1.16
+author: Matsubara
+description: ${project.description}
+libraries:
+  - org.apache.commons:commons-lang3:3.13.0
+  - commons-io:commons-io:2.13.0
+depend:
+  - ImageryAPI
+  - NoteBlockAPI
+
+commands:
+  miphone:
+    description: main command.
+    usage: /<command>
+    aliases:
+      - mip
+      - mp
