@@ -12,6 +12,7 @@ import dev.jensderuiter.minecraft_imagery.image.ImageCaptureOptions;
 import lombok.Getter;
 import lombok.Setter;
 import me.matsubara.miphone.MiPhonePlugin;
+import me.matsubara.miphone.data.WeatherType;
 import me.matsubara.miphone.file.Config;
 import me.matsubara.miphone.phone.render.*;
 import me.matsubara.miphone.song.CustomEntitySongPlayer;
@@ -88,6 +89,8 @@ public final class Phone extends MapRenderer {
     private ItemStack item;
     private EntitySongPlayer songPlayer;
     private ItemFrame chargingAt;
+    private WeatherType weatherType;
+    private Color weatherBackgroundColor;
 
     private int battery = getMaxBattery();
     private int pictureTakenCount;
@@ -116,6 +119,7 @@ public final class Phone extends MapRenderer {
     private String currentBattery;
     private String currentTime;
     private String currentDate;
+    private String currentWeatherText;
     private String errorMessage;
     private String previousPage;
     private String previousButton;
@@ -148,7 +152,8 @@ public final class Phone extends MapRenderer {
                     "camera",
                     "gallery",
                     "settings",
-                    "music"),
+                    "music",
+                    "weather"),
             "music", ImmutableList.of(
                     "up",
                     "tab-1",
@@ -169,7 +174,8 @@ public final class Phone extends MapRenderer {
             "backgrounds", ImmutableList.of(
                     "previous",
                     "checkmark",
-                    "next"));
+                    "next"),
+            "weather", ImmutableList.of("weather-type"));
 
     private static final List<String> BACKGROUND_GALLERY_BUTTONS = createGalleryButtonsByType(true);
     private static final List<String> GALLERY_BUTTONS = createGalleryButtonsByType(false);
@@ -183,7 +189,7 @@ public final class Phone extends MapRenderer {
     private static final Coord MID_CORNER = new Coord(-1, TOP_LEFT_CORNER.y() + 9);
 
     // Enabled phone (background) related.
-    private static final int[] BACKGROUND_SIZE = {116, 116};
+    private static final int BACKGROUND_SIZE = 116;
     private static final Coord BACKGROUND_COORD = new Coord(6, 6);
 
     // Gallery related.
@@ -198,6 +204,7 @@ public final class Phone extends MapRenderer {
     // Error.
     private static final Coord ERROR_COORD = new Coord(27, 37);
 
+    private static final double PICTURE_RANGE = 15.0d;
     private static final int TAB_BUTTONS_X = 10;
     private static final int[] TAB_BUTTONS_Y = {25, 52, 79};
     private static final int REDUCE_BRIGHTNESS_AFTER = 25;
@@ -214,6 +221,7 @@ public final class Phone extends MapRenderer {
 
     private static final Map<String, SongData> SONG_CACHE = new ConcurrentHashMap<>();
     private static final Map<String, BufferedImage> CRACK_CACHE = new HashMap<>();
+    private static final Map<String, BufferedImage> WEATHER_CACHE = new HashMap<>();
 
     public Phone(@Nullable UUID owner, @NotNull MiPhonePlugin plugin, @Nullable MapView view, @Nullable Color phoneColor) throws IOException {
         ImageIO.setUseCache(false);
@@ -236,6 +244,9 @@ public final class Phone extends MapRenderer {
 
         addDraw("music", new ImageDraw("background", BACKGROUND_COORD, createColorBackground(BACKGROUND_COLOR_DEFAULT)));
         addDraw("settings", new ImageDraw("background", BACKGROUND_COORD, createColorBackground(Color.LIGHT_GRAY)));
+        addDraw("weather", new ImageDraw("background", BACKGROUND_COORD, null));
+        addDraw("weather", new ImageDraw("weather-type", new Coord(-1, -1), null).setExtraY(-15));
+        addDraw("weather", new TextDraw("weather-text", new Coord(-1, 85), () -> Color.WHITE, this::getCurrentWeatherText, 18, 95).withSelector(Color.BLACK));
 
         // Draw core parts.
         resetLayout();
@@ -448,6 +459,11 @@ public final class Phone extends MapRenderer {
     public String getCurrentButtonFormatted() {
         if (currentButton == null || !getPageButtons("main").contains(currentButton)) return "";
         return plugin.getConfig().getString("apps." + currentButton + ".name", "");
+    }
+
+    public String getCurrentWeatherText() {
+        if (weatherType == null) return "";
+        return plugin.getConfig().getString("weather-text." + weatherType.toConfigPath(), "");
     }
 
     private String getSongInformation(int which, boolean artist) {
@@ -678,7 +694,7 @@ public final class Phone extends MapRenderer {
         addDraw(page, new ImageDraw(which, coord, drawCondition, ImageIO.read(icon)));
     }
 
-    private boolean shouldForceUpdate() {
+    private boolean shouldForceUpdate(Player player) {
         // If the current page has any text display, we need to update it frecuently.
         return forceChargingUpdate() || (enabled && alreadyStarted && ((showError && !blocked)
                 || reduceBrightness
@@ -687,6 +703,9 @@ public final class Phone extends MapRenderer {
                 || (currentPage.equals("main") && forceBatteryUpdate() || outOfBattery())
                 || (currentPage.equals("main") && (currentTime == null || !currentTime.equals(getTimeFormatted())))
                 || (currentPage.equals("main") && (currentDate == null || !currentDate.equals(getDateFormatted())) && isBlocked())
+                || (currentPage.equals("weather") && (weatherType == null || weatherType != WeatherType.fromLocation(player.getLocation())))
+                || (currentPage.equals("weather") && (weatherBackgroundColor == null || !weatherBackgroundColor.equals(getDayColor(player.getWorld().getTime()))))
+                || (currentPage.equals("weather") && (currentWeatherText == null || !currentWeatherText.equals(getCurrentWeatherText())))
                 || draws.get(currentPage).stream().anyMatch(draw -> draw instanceof TextDraw text && text.requiresAnimation() && text.canBeDrawn(this))));
     }
 
@@ -700,6 +719,11 @@ public final class Phone extends MapRenderer {
 
     public boolean outOfBattery() {
         return battery <= 0;
+    }
+
+    private Color getDayColor(long time) {
+        int which = (int) (Math.floor(time / 1000.0d) * 1000) / 1000;
+        return PluginUtils.DAY_COLOR[which];
     }
 
     @Override
@@ -718,7 +742,7 @@ public final class Phone extends MapRenderer {
         // Here, "updated" value may change.
         handleBackground();
 
-        if (updated && !shouldForceUpdate()) return;
+        if (updated && !shouldForceUpdate(player)) return;
 
         if (!updated && !previousUpdated) {
             noTouchCounter = 0;
@@ -727,9 +751,16 @@ public final class Phone extends MapRenderer {
         isNoTouchHide = !TOUCH_DRAW.test(this);
         updated = true;
 
+        plugin.getLogger().info("UPDATING!");
+
         currentBattery = getBatteryFormatted();
         currentTime = getTimeFormatted();
         currentDate = getDateFormatted();
+
+        weatherType = WeatherType.fromLocation(player.getLocation());
+        weatherBackgroundColor = getDayColor(player.getWorld().getTime());
+        currentWeatherText = getCurrentWeatherText();
+        handleWeather();
 
         // No more battery, power off.
         if (enabled && outOfBattery()) {
@@ -752,9 +783,42 @@ public final class Phone extends MapRenderer {
         // TODO: App selector, cracks & toggle settings aren't saved in any page draws (therefore, they're not being cached). These ones needs to be handled differently.
         new ImageDraw("app-selector",
                 draw.getCoord(),
-                PluginUtils.createSelector(image.getImage(), getSelectorColor())).handleRender(this, canvas);
+                PluginUtils.createSelector(image.getImage(), getSelectorColor()))
+                .setExtraX(draw.getExtraX())
+                .setExtraY(draw.getExtraY())
+                .handleRender(this, canvas);
 
         showCracks(canvas);
+    }
+
+    private void handleWeather() {
+        if (getDrawFromPage("weather", "background") instanceof ImageDraw image) {
+            String key = weatherBackgroundColor.toString();
+            BufferedImage temp = WEATHER_CACHE.get(key);
+            if (temp == null) {
+                WEATHER_CACHE.put(key, temp = createColorBackground(weatherBackgroundColor));
+            }
+            image.setImage(temp);
+        }
+
+        if (!(getDrawFromPage("weather", "weather-type") instanceof ImageDraw image)) return;
+
+        String key = weatherType.name();
+        BufferedImage temp = WEATHER_CACHE.get(key);
+        if (temp != null) {
+            image.setImage(temp);
+            return;
+        }
+
+        try {
+            InputStream resource = plugin.getResource("weather/" + key.toLowerCase() + ".png");
+            if (resource == null) return;
+
+            WEATHER_CACHE.put(key, temp = ImageIO.read(resource));
+            image.setImage(temp);
+        } catch (IOException exception) {
+            exception.printStackTrace();
+        }
     }
 
     private Color getSelectorColor() {
@@ -771,6 +835,10 @@ public final class Phone extends MapRenderer {
 
         if (currentButton != null && currentButton.equals("camera")) {
             return (takingPicture || !canTakePicture() ? Palette.RED : Palette.LIGHT_GREEN).getJavaColor();
+        }
+
+        if (currentButton != null && currentButton.equalsIgnoreCase("weather-type")) {
+            return Color.BLACK;
         }
 
         return Color.WHITE;
@@ -1032,8 +1100,8 @@ public final class Phone extends MapRenderer {
                 player.getEyeLocation().clone(),
                 players,
                 ImageCaptureOptions.builder()
-                        .width(BACKGROUND_SIZE[0])
-                        .height(BACKGROUND_SIZE[1])
+                        .width(BACKGROUND_SIZE)
+                        .height(BACKGROUND_SIZE)
                         .fov(1.5f)
                         .dayLightCycleAware(true)
                         .excludedBlocks(Constants.EXCLUDED_BLOCKS)
@@ -1338,7 +1406,10 @@ public final class Phone extends MapRenderer {
         }
 
         try {
-            addDraw("gallery", new ImageDraw(button, coord, TOUCH_DRAW.and(isBackgroundGallery ? Phone::isBackgroundGallery : Predicate.not(Phone::isBackgroundGallery)), ImageIO.read(app)));
+            addDraw("gallery", new ImageDraw(button,
+                    coord,
+                    TOUCH_DRAW.and(isBackgroundGallery ? Phone::isBackgroundGallery : Predicate.not(Phone::isBackgroundGallery)),
+                    ImageIO.read(app)));
         } catch (IOException exception) {
             exception.printStackTrace();
         }
@@ -1363,7 +1434,7 @@ public final class Phone extends MapRenderer {
     }
 
     private @NotNull BufferedImage createColorBackground(Color color) {
-        BufferedImage background = new BufferedImage(BACKGROUND_SIZE[0], BACKGROUND_SIZE[1], BufferedImage.TYPE_INT_ARGB);
+        BufferedImage background = new BufferedImage(BACKGROUND_SIZE, BACKGROUND_SIZE, BufferedImage.TYPE_INT_ARGB);
 
         Graphics2D graphics = background.createGraphics();
         graphics.setColor(color);
@@ -1373,8 +1444,15 @@ public final class Phone extends MapRenderer {
         return background;
     }
 
+    public void resetNoTouch() {
+        noTouchCounter = 0;
+        // Only request update if brightness is reduced.
+        if (reduceBrightness) updated = false;
+    }
+
     public void switchButton(boolean left) {
         if (showError) return;
+        if (currentPage.equals("weather")) resetNoTouch();
 
         String newButton = switchDataOption(getPageButtons(currentPage).toArray(String[]::new), currentButton, left, currentPage.equals("main"));
 

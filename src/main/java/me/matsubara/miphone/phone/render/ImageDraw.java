@@ -51,11 +51,14 @@ public final class ImageDraw extends Draw {
             temp = image;
         }
 
+        int width = temp.getWidth();
+        int height = temp.getHeight();
+
         if (phone.isReduceBrightness() && !name.equals("layout") && !name.startsWith("crack")) {
             if (DARK_CACHE.containsKey(temp)) {
                 temp = DARK_CACHE.get(temp);
             } else {
-                BufferedImage darker = new BufferedImage(temp.getWidth(), temp.getHeight(), BufferedImage.TYPE_INT_ARGB);
+                BufferedImage darker = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D graphics = darker.createGraphics();
                 graphics.drawImage(temp, 0, 0, null);
                 graphics.dispose();
@@ -77,18 +80,21 @@ public final class ImageDraw extends Draw {
             }
         }
 
-        int[] pixels = new int[temp.getWidth() * temp.getHeight()];
-        temp.getRGB(0, 0, temp.getWidth(), temp.getHeight(), pixels, 0, temp.getWidth());
+        int[] pixels = new int[width * height];
+        temp.getRGB(0, 0, width, height, pixels, 0, width);
 
-        Byte[] bytes = new Byte[temp.getWidth() * temp.getHeight()];
+        Byte[] bytes = new Byte[width * height];
         for (int i = 0; i < pixels.length; i++) {
             bytes[i] = (pixels[i] >> 24) == 0x00 ? null : MapPalette.matchColor(new Color(pixels[i], true));
         }
 
+        int tX = (getX() == -1 ? ((128 - width) / 2) : getX()) + extraX;
+        int tY = (getY() == -1 ? ((128 - height) / 2) : getY()) + extraY;
+
         for (int x = 0; x < this.image.getWidth(); x++) {
             for (int y = 0; y < this.image.getHeight(); y++) {
                 Byte color = bytes[y * this.image.getWidth() + x];
-                if (color != null) canvas.setPixel(getX() + x, getY() + y, color);
+                if (color != null) canvas.setPixel(tX + x, tY + y, color);
             }
         }
 

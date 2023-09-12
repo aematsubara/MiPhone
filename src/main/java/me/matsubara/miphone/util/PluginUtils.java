@@ -42,6 +42,7 @@ public class PluginUtils {
     private static final String[] SIZE_UNITS = new String[]{"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
     private static final Map<String, org.bukkit.Color> COLORS_BY_NAME = new HashMap<>();
     private static final org.bukkit.Color[] COLORS;
+    public static final Color[] DAY_COLOR;
 
     private static final MethodHandle SET_PROFILE;
     private static final MethodHandle PROFILE;
@@ -59,6 +60,11 @@ public class PluginUtils {
         }
 
         COLORS = COLORS_BY_NAME.values().toArray(new org.bukkit.Color[0]);
+
+        DAY_COLOR = new Color[24];
+        for (int i = 0; i < 24; i++) {
+            DAY_COLOR[i] = getInterpolatedColor(i * 1000);
+        }
 
         Class<?> craftMetaSkull = ReflectionUtils.getCraftClass("inventory.CraftMetaSkull");
         Preconditions.checkNotNull(craftMetaSkull);
@@ -484,5 +490,51 @@ public class PluginUtils {
 
     private static int getValidColorFromString(String string) {
         return Math.min(Integer.parseInt(string), 255);
+    }
+
+    public static @NotNull Color getInterpolatedColor(int ticks) {
+        Color dawn = new Color(59, 102, 150);
+        Color noon = new Color(61, 138, 224);
+        Color dusk = new Color(30, 63, 98);
+        Color midnight = new Color(13, 26, 38);
+        return lerpColor(dawn, noon, dusk, midnight, (double) ticks / 24000.0d);
+    }
+
+    @Contract("_, _, _, _, _ -> new")
+    public static @NotNull Color lerpColor(@NotNull Color first, @NotNull Color second, @NotNull Color third, @NotNull Color fourth, double fractionOfDay) {
+        int fRed = first.getRed(), fGreen = first.getGreen(), fBlue = first.getBlue();
+        int sRed = second.getRed(), sGreen = second.getGreen(), sBlue = second.getBlue();
+        int tRed = third.getRed(), tGreen = third.getGreen(), tBlue = third.getBlue();
+        int foRed = fourth.getRed(), foGreen = fourth.getGreen(), foBlue = fourth.getBlue();
+
+        if (fractionOfDay < 0.25d) {
+            double normalized = fractionOfDay * 4.0d;
+            int red = (int) (fRed + (sRed - fRed) * normalized);
+            int green = (int) (fGreen + (sGreen - fGreen) * normalized);
+            int blue = (int) (fBlue + (sBlue - fBlue) * normalized);
+            return new Color(red, green, blue);
+        }
+
+        if (fractionOfDay < 0.5d) {
+            double normalizedT = (fractionOfDay - 0.25d) * 4.0d;
+            int red = (int) (sRed + (tRed - sRed) * normalizedT);
+            int green = (int) (sGreen + (tGreen - sGreen) * normalizedT);
+            int blue = (int) (sBlue + (tBlue - sBlue) * normalizedT);
+            return new Color(red, green, blue);
+        }
+
+        if (fractionOfDay < 0.75d) {
+            double normalizedT = (fractionOfDay - 0.5d) * 4.0d;
+            int red = (int) (tRed + (foRed - tRed) * normalizedT);
+            int green = (int) (tGreen + (foGreen - tGreen) * normalizedT);
+            int blue = (int) (tBlue + (foBlue - tBlue) * normalizedT);
+            return new Color(red, green, blue);
+        }
+
+        double normalized = (fractionOfDay - 0.75d) * 4.0d;
+        int red = (int) (foRed + (fRed - foRed) * normalized);
+        int green = (int) (foGreen + (fGreen - foGreen) * normalized);
+        int blue = (int) (foBlue + (fBlue - foBlue) * normalized);
+        return new Color(red, green, blue);
     }
 }

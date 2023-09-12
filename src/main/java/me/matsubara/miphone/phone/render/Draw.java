@@ -13,6 +13,7 @@ public abstract class Draw {
 
     protected final String name;
     protected Coord coord;
+    protected int extraX, extraY;
     protected final Predicate<Phone> drawCondition;
 
     public Draw(String name, Coord coord, Predicate<Phone> drawCondition) {
@@ -27,6 +28,18 @@ public abstract class Draw {
 
     public int getY() {
         return coord.y();
+    }
+
+    public Draw setExtraX(int extraX) {
+        // This should be used only when using centered X (X = -1).
+        this.extraX += extraX;
+        return this;
+    }
+
+    public Draw setExtraY(int extraY) {
+        // This should be used only when using centered Y (Y = -1).
+        this.extraY += extraY;
+        return this;
     }
 
     public boolean canBeDrawn(Phone phone) {

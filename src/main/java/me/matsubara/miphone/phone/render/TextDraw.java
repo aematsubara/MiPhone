@@ -24,6 +24,7 @@ public final class TextDraw extends Draw {
     private Font font = new Font("", Font.PLAIN, 11);
     private int maxLength;
     private int maxWidth;
+    private Color withSelector;
 
     private @Setter String previousMessage;
     private int startIndex;
@@ -105,16 +106,16 @@ public final class TextDraw extends Draw {
             graphics.setFont(font);
             graphics.setColor(color);
 
-            int x = getX(phone) == -1 ? (int) ((128 - getStringWidth(message)) / 2) : getX(phone);
-            int y = getY() == -1 ? MIDDLE_Y : getY();
+            int x = (getX(phone) == -1 ? (int) ((128 - getStringWidth(message)) / 2) : getX(phone)) + extraX;
+            int y = (getY() == -1 ? MIDDLE_Y : getY()) + extraY;
 
             // We need to add an offset because the coords were tracked with the default minecraft font.
             graphics.drawString(message, x, y + 7);
             graphics.dispose();
 
-            if (createBorder) {
+            if (createBorder || withSelector != null) {
                 graphics = image.createGraphics();
-                graphics.drawImage(PluginUtils.createSelector(image, color), 0, 0, null);
+                graphics.drawImage(PluginUtils.createSelector(image, withSelector != null ? withSelector : color), 0, 0, null);
                 graphics.dispose();
             }
 
@@ -123,6 +124,11 @@ public final class TextDraw extends Draw {
 
         new ImageDraw("text", new Coord(0, 0), image).handleRender(phone, canvas);
         return true;
+    }
+
+    public TextDraw withSelector(Color withSelector) {
+        this.withSelector = withSelector;
+        return this;
     }
 
     private @NotNull String createKey(@NotNull String message, @NotNull Coord coord, @NotNull Color color) {

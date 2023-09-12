@@ -76,6 +76,9 @@ apps:
   music:
     name: "Music"
     color: red
+  weather:
+    name: "Weather"
+    color: blue
 
 date-format:
   # The date displayed on the lock screen.
@@ -253,3 +256,12 @@ colors:
   white: "&#BCC5FC"
   dark-red: "&#AB0502"
   gold: "&#CB8D1B"
+
+# The text that'll be displayed depending on the weather condition at the player's position.
+weather-text:
+  clear: "Clear time!"
+  cloudy: "Some clouds..."
+  raining: "It's raining!"
+  raining-and-thundering: "A thunder storm!"
+  shining: "Sun is shining."
+  snowing: "Snow!"

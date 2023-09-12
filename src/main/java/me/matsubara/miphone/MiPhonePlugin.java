@@ -307,6 +307,10 @@ public final class MiPhonePlugin extends JavaPlugin {
             phone.openGallery(player);
         } else if (currentButton.equalsIgnoreCase("music")) {
             phone.openMusic(player);
+        } else if (currentButton.equalsIgnoreCase("weather")) {
+            phone.setCurrentPage("weather", "weather-type");
+        } else if (currentButton.equalsIgnoreCase("weather-type")) {
+            phone.resetNoTouch();
         } else if (currentButton.contains("tab-")) {
             int toUse = Integer.parseInt(currentButton.split("-")[1]);
             if (phone.getCurrentPage().equalsIgnoreCase("music")) {
@@ -427,7 +431,7 @@ public final class MiPhonePlugin extends JavaPlugin {
 
     public void handleRightClick(@NotNull Player player, @NotNull Phone phone) {
         if (phone.isNoTouchHide()) {
-            if (!phone.isShowError()) phone.setNoTouchCounter(0);
+            if (!phone.isShowError()) phone.resetNoTouch();
             phone.playClickSound(player);
             return;
         }
