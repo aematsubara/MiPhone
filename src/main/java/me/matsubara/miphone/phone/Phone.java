@@ -751,8 +751,6 @@ public final class Phone extends MapRenderer {
         isNoTouchHide = !TOUCH_DRAW.test(this);
         updated = true;
 
-        plugin.getLogger().info("UPDATING!");
-
         currentBattery = getBatteryFormatted();
         currentTime = getTimeFormatted();
         currentDate = getDateFormatted();
