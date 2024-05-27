@@ -7,6 +7,7 @@ import me.matsubara.miphone.file.Config;
 import me.matsubara.miphone.file.Messages;
 import me.matsubara.miphone.listener.EventListener;
 import me.matsubara.miphone.listener.OtherListener;
+import me.matsubara.miphone.phone.CustomApp;
 import me.matsubara.miphone.phone.Phone;
 import me.matsubara.miphone.phone.Settings;
 import me.matsubara.miphone.phone.render.Draw;
@@ -36,6 +37,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -59,6 +61,7 @@ public final class MiPhonePlugin extends JavaPlugin {
     private final NamespacedKey wirelessChargerKey = new NamespacedKey(this, "wireless-charger");
     private final Map<Item, Integer> droppedPhones = new ConcurrentHashMap<>();
     private final Set<ItemFrame> chargingPhones = new HashSet<>();
+    private final @Getter List<String> availableIcons = new ArrayList<>();
     private @Setter Shape wirelessCharger;
 
     private Messages messages;
@@ -78,6 +81,7 @@ public final class MiPhonePlugin extends JavaPlugin {
         // Save files.
         saveDefaultConfig();
         saveFiles("background");
+        saveFiles("icon");
         saveFiles("song");
         messages = new Messages(this);
         updateConfigs();
@@ -85,6 +89,7 @@ public final class MiPhonePlugin extends JavaPlugin {
         reloadStartAnimation();
         reloadColors();
         reloadSafeBlocks();
+        reloadAvailableIcons();
 
         wirelessCharger = createWirelessCharger();
 
@@ -110,7 +115,7 @@ public final class MiPhonePlugin extends JavaPlugin {
                 "config.yml",
                 file -> reloadConfig(),
                 file -> saveDefaultConfig(),
-                config -> IGNORE_SECTIONS,
+                config -> IGNORE_SECTIONS.stream().filter(config::contains).toList(),
                 Collections.emptyList());
 
         ConfigFileUtils.updateConfig(
@@ -123,7 +128,6 @@ public final class MiPhonePlugin extends JavaPlugin {
                 Collections.emptyList());
     }
 
-    @SuppressWarnings("SameParameterValue")
     public void saveResource(String name) {
         File file = new File(getDataFolder(), name);
         if (!file.exists()) saveResource(name, false);
@@ -144,6 +148,11 @@ public final class MiPhonePlugin extends JavaPlugin {
             if (material != null) safeDropBlocks.add(material);
             else getLogger().warning("Can't find material {" + string + "}!");
         }
+    }
+
+    public void reloadAvailableIcons() {
+        availableIcons.clear();
+        availableIcons.addAll(initAvailableIcons());
     }
 
     public void reloadStartAnimation() {
@@ -268,7 +277,7 @@ public final class MiPhonePlugin extends JavaPlugin {
 
             Draw time = phone.getDrawFromPage("main", "time");
             if (time instanceof TextDraw text) {
-                text.setCoord(Phone.TOP_LEFT_CORNER);
+                text.setCoord(() -> Phone.TOP_LEFT_CORNER);
             }
 
             phone.reOpenPrevious(player, false);
@@ -423,7 +432,13 @@ public final class MiPhonePlugin extends JavaPlugin {
         } else if (currentButton.equalsIgnoreCase("settings")) {
             phone.openSettings(player);
         } else {
-            phone.showErrorDialog(Config.ERROR_APP_NO_FUNCTION.asString());
+            CustomApp app = phone.getCustomMainApps().get(currentButton);
+            if (app != null) {
+                // Commands are saved with a '/' at the start.
+                player.performCommand(app.command().substring(1));
+            } else {
+                phone.showErrorDialog(Config.ERROR_APP_NO_FUNCTION.asString());
+            }
         }
 
         phone.playClickSound(player);
@@ -493,5 +508,38 @@ public final class MiPhonePlugin extends JavaPlugin {
     @Contract(pure = true)
     public @NotNull String getBackgroundFolder() {
         return getDataFolder() + File.separator + "background";
+    }
+
+    private @NotNull List<String> initAvailableIcons() {
+        ArrayList<String> strings = new ArrayList<>();
+        File standard = new File(createFolderPath(getDataFolder().toString(), "icon", "standard"));
+
+        File[] iconFolder = standard.listFiles((dir, name) -> new File(dir, name).isDirectory());
+        if (iconFolder == null) return Collections.emptyList();
+
+        for (File folder : iconFolder) {
+            String folderName = folder.getName();
+            if (folderName.equals("tab")) continue;
+
+            File[] iconColors = folder.listFiles((dir, name) -> new File(dir, name).isFile());
+            if (iconColors == null) continue;
+
+            for (File file : iconColors) {
+                try {
+                    BufferedImage image = ImageIO.read(file);
+                    if (image == null) continue;
+
+                    strings.add(folderName + ":" + file.getName());
+                } catch (IOException ignored) {
+                }
+            }
+        }
+
+        return strings.stream().sorted().toList();
+    }
+
+    @Contract("_ -> new")
+    public @NotNull String createFolderPath(String... paths) {
+        return String.join(File.separator, paths);
     }
 }

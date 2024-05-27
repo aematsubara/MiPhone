@@ -20,6 +20,8 @@ public class Messages {
     private final MiPhonePlugin plugin;
     private @Setter FileConfiguration configuration;
 
+    private static final String CUSTOM_APPS_SECTION = "custom-apps";
+
     public Messages(@NotNull MiPhonePlugin plugin) {
         this.plugin = plugin;
         this.plugin.saveResource("messages.yml");
@@ -77,16 +79,29 @@ public class Messages {
         CHARGER_AT_TOP,
         ONLY_ON_CHARGERS,
         CHARGER_IN_USE,
-        PHONE_ALREADY_CHARGING;
+        PHONE_ALREADY_CHARGING,
+        NOT_HOLDING_PHONE(CUSTOM_APPS_SECTION, "not-holding-phone"),
+        UNKNOWN_APP(CUSTOM_APPS_SECTION, "unknown-app"),
+        DEFAULT_APP(CUSTOM_APPS_SECTION, "default-app"),
+        APP_ALREADY_EXISTS(CUSTOM_APPS_SECTION, "app-already-exists"),
+        APP_ICON_NOT_FOUND(CUSTOM_APPS_SECTION, "app-icon-not-found"),
+        APP_INVALID_COMMAND(CUSTOM_APPS_SECTION, "app-invalid-command"),
+        OUT_OF_SPACE(CUSTOM_APPS_SECTION, "out-of-space"),
+        APP_ADDED(CUSTOM_APPS_SECTION, "app-added"),
+        APP_DELETED(CUSTOM_APPS_SECTION, "app-deleted");
 
-        private final @Nullable String path;
+        private final String path;
+
+        Message(String section, String path) {
+            this(section + "." + path);
+        }
+
+        Message(String path) {
+            this.path = path;
+        }
 
         Message() {
             this.path = name().toLowerCase().replace("_", "-");
-        }
-
-        Message(@Nullable String path) {
-            this.path = path;
         }
     }
 }

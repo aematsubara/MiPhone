@@ -6,28 +6,29 @@ import me.matsubara.miphone.phone.Phone;
 import org.bukkit.map.MapCanvas;
 
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @Getter
 @Setter
 public abstract class Draw {
 
     protected final String name;
-    protected Coord coord;
+    protected Supplier<Coord> coord;
     protected int extraX, extraY;
     protected final Predicate<Phone> drawCondition;
 
-    public Draw(String name, Coord coord, Predicate<Phone> drawCondition) {
+    public Draw(String name, Supplier<Coord> coord, Predicate<Phone> drawCondition) {
         this.name = name;
         this.coord = coord;
         this.drawCondition = drawCondition;
     }
 
     public int getX() {
-        return coord.x();
+        return coord.get().x();
     }
 
     public int getY() {
-        return coord.y();
+        return coord.get().y();
     }
 
     public Draw setExtraX(int extraX) {

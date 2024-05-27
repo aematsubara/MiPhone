@@ -35,14 +35,26 @@ public final class TextDraw extends Draw {
     private static final Map<String, BufferedImage> CACHE = new HashMap<>();
 
     public TextDraw(String name, Coord coord, Predicate<Phone> drawCondition, Supplier<Color> color, Supplier<String> message) {
-        this(name, coord, drawCondition, color, message, -1, -1);
+        this(name, () -> coord, drawCondition, color, message);
     }
 
     public TextDraw(String name, Coord coord, Supplier<Color> color, Supplier<String> message, int maxLength, int maxWidth) {
-        this(name, coord, phone -> true, color, message, maxLength, maxWidth);
+        this(name, () -> coord, color, message, maxLength, maxWidth);
     }
 
     public TextDraw(String name, Coord coord, Predicate<Phone> drawCondition, Supplier<Color> color, Supplier<String> message, int maxLength, int maxWidth) {
+        this(name, () -> coord, drawCondition, color, message, maxLength, maxWidth);
+    }
+
+    public TextDraw(String name, Supplier<Coord> coord, Predicate<Phone> drawCondition, Supplier<Color> color, Supplier<String> message) {
+        this(name, coord, drawCondition, color, message, -1, -1);
+    }
+
+    public TextDraw(String name, Supplier<Coord> coord, Supplier<Color> color, Supplier<String> message, int maxLength, int maxWidth) {
+        this(name, coord, phone -> true, color, message, maxLength, maxWidth);
+    }
+
+    public TextDraw(String name, Supplier<Coord> coord, Predicate<Phone> drawCondition, Supplier<Color> color, Supplier<String> message, int maxLength, int maxWidth) {
         super(name, coord, drawCondition);
         this.color = color;
         this.message = message;
@@ -90,7 +102,7 @@ public final class TextDraw extends Draw {
 
         Color color = this.color.get();
         boolean createBorder = !phone.isBlocked() && phone.isShowError() && !name.equals("error-message");
-        String key = (createBorder ? "*" : "") + createKey(message, coord, color);
+        String key = (createBorder ? "*" : "") + createKey(message, coord.get(), color);
 
         BufferedImage image;
         if (CACHE.containsKey(key)) {

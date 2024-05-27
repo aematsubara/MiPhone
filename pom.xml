@@ -6,7 +6,7 @@
 
     <groupId>me.matsubara</groupId>
     <artifactId>miphone</artifactId>
-    <version>1.1.1</version>
+    <version>1.2</version>
     <packaging>jar</packaging>
 
     <name>MiPhone</name>
@@ -60,6 +60,8 @@
                                     <artifact>com.github.cryptomorin:XSeries</artifact>
                                     <includes>
                                         <include>com/cryptomorin/xseries/ReflectionUtils*</include>
+                                        <include>com/cryptomorin/xseries/SkullUtils*</include>
+                                        <include>com/cryptomorin/xseries/XMaterial*</include>
                                     </includes>
                                 </filter>
                             </filters>
@@ -108,7 +110,7 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.20.1-R0.1-SNAPSHOT</version>
+            <version>1.20.4-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <!-- commons-lang3 -->
@@ -129,7 +131,7 @@
         <dependency>
             <groupId>dev.jensderuiter</groupId>
             <artifactId>minecraft-imagery</artifactId>
-            <version>1.1.1</version>
+            <version>1.1.3</version>
             <scope>provided</scope>
         </dependency>
         <!--  annotations  -->
@@ -143,7 +145,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.26</version>
+            <version>1.18.30</version>
             <scope>provided</scope>
         </dependency>
         <!-- NoteBlockAPI -->
@@ -163,7 +165,7 @@
         <dependency>
             <groupId>com.github.cryptomorin</groupId>
             <artifactId>XSeries</artifactId>
-            <version>9.5.0</version>
+            <version>10.0.0</version>
         </dependency>
         <!-- authlib -->
         <dependency>

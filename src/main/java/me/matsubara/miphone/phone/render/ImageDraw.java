@@ -14,6 +14,7 @@ import java.awt.image.WritableRaster;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @Getter
 @Setter
@@ -26,10 +27,18 @@ public final class ImageDraw extends Draw {
     private static final Map<BufferedImage, BufferedImage> DARK_CACHE = new HashMap<>();
 
     public ImageDraw(String name, Coord coord, BufferedImage image) {
-        this(name, coord, phone -> true, image);
+        this(name, () -> coord, image);
     }
 
     public ImageDraw(String name, Coord coord, Predicate<Phone> drawCondition, BufferedImage image) {
+        this(name, () -> coord, drawCondition, image);
+    }
+
+    public ImageDraw(String name, Supplier<Coord> coord, BufferedImage image) {
+        this(name, coord, phone -> true, image);
+    }
+
+    public ImageDraw(String name, Supplier<Coord> coord, Predicate<Phone> drawCondition, BufferedImage image) {
         super(name, coord, drawCondition);
         this.image = image;
     }

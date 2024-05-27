@@ -27,6 +27,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -134,26 +135,10 @@ public final class Phone extends MapRenderer {
     private Map<String, File> music;
     private Map<String, String> lastButtons = new HashMap<>();
     private EnumMap<Settings, Object> settingsValues = new EnumMap<>(Settings.class);
+    private Map<String, CustomApp> customMainApps = new LinkedHashMap<>();
 
-    private Triple<String, String, String> songs;
-    private Triple<Settings, Settings, Settings> settings;
-
-    private static final String DEFAULT_PAGE = "main";
-    private static final Predicate<Phone> TOUCH_DRAW = temp -> (temp.getNoTouchCounter() / 4) <= 5;
-    private static final Predicate<Phone> NEXT_DRAW = temp -> {
-        int imageIndex = temp.getCurrentPictureIndex();
-        return imageIndex != -1 && imageIndex < temp.getPictures().size() - 1;
-    };
-
-    private static final Set<String> NO_TOUCH_PAGES = ImmutableSet.of("gallery");
-    private static final List<String> IGNORE_MOVE_BUTTONS = ImmutableList.of("previous", "next", "up", "down");
-    private static final Map<String, List<String>> PAGE_BUTTONS = ImmutableMap.of(
-            "main", ImmutableList.of(
-                    "camera",
-                    "gallery",
-                    "settings",
-                    "music",
-                    "weather"),
+    private final Map<String, List<String>> pageButtons = ImmutableMap.of(
+            "main", Lists.newArrayList(DEFAULT_MAIN_APPS),
             "music", ImmutableList.of(
                     "up",
                     "tab-1",
@@ -176,11 +161,23 @@ public final class Phone extends MapRenderer {
                     "checkmark",
                     "next"),
             "weather", ImmutableList.of("weather-type"));
+    private final List<String> backgroundGalleryButtons = createGalleryButtonsByType(true);
+    private final List<String> galleryButtons = createGalleryButtonsByType(false);
 
-    private static final List<String> BACKGROUND_GALLERY_BUTTONS = createGalleryButtonsByType(true);
-    private static final List<String> GALLERY_BUTTONS = createGalleryButtonsByType(false);
+    private Triple<String, String, String> songs;
+    private Triple<Settings, Settings, Settings> settings;
 
-    // Default apps (buttons) coordinates for main page.
+    private static final String DEFAULT_PAGE = "main";
+    private static final Predicate<Phone> TOUCH_DRAW = temp -> (temp.getNoTouchCounter() / 4) <= 5;
+    private static final Predicate<Phone> NEXT_DRAW = temp -> {
+        int imageIndex = temp.getCurrentPictureIndex();
+        return imageIndex != -1 && imageIndex < temp.getPictures().size() - 1;
+    };
+
+    private static final Set<String> NO_TOUCH_PAGES = ImmutableSet.of("gallery");
+    private static final List<String> IGNORE_MOVE_BUTTONS = ImmutableList.of("previous", "next", "up", "down");
+
+    // Default apps (buttons) coordinates for the main page.
     private static final int[] X_COORDINATES = {11, 39, 67, 95};
     private static final int[] Y_COORDINATES = {31, 59, 87};
 
@@ -222,6 +219,12 @@ public final class Phone extends MapRenderer {
     private static final Map<String, SongData> SONG_CACHE = new ConcurrentHashMap<>();
     private static final Map<String, BufferedImage> CRACK_CACHE = new HashMap<>();
     private static final Map<String, BufferedImage> WEATHER_CACHE = new HashMap<>();
+    public static final List<String> DEFAULT_MAIN_APPS = ImmutableList.of(
+            "camera",
+            "gallery",
+            "settings",
+            "music",
+            "weather");
 
     public Phone(@Nullable UUID owner, @NotNull MiPhonePlugin plugin, @Nullable MapView view, @Nullable Color phoneColor) throws IOException {
         ImageIO.setUseCache(false);
@@ -232,7 +235,7 @@ public final class Phone extends MapRenderer {
         this.mainCoords = PluginUtils.generateCoords(getPageButtons("main").size(), 24, 24, 8, 128, 0);
         this.phoneColor = phoneColor != null ? phoneColor : DEFAULT_PHONE_COLOR;
 
-        // Set default page and button.
+        // Set the default page and button.
         setCurrentPage(DEFAULT_PAGE, getPageButtons(DEFAULT_PAGE).get(0));
 
         // Draw background for the main, play & settings pages.
@@ -265,7 +268,7 @@ public final class Phone extends MapRenderer {
                 Palette.LIGHT_GREEN::getJavaColor,
                 this::getBatteryFormatted));
 
-        // Draw first picture frame (empty).
+        // Draw the first picture frame (empty).
         addDraw("gallery", new ImageDraw("picture", BACKGROUND_COORD, null));
 
         // Draw gallery buttons (if possible).
@@ -305,16 +308,16 @@ public final class Phone extends MapRenderer {
         addDraw("main", new TextDraw("battery", new Coord(-1, TOP_LEFT_CORNER.y()), ifNotErrorOrBlocked, this::getBatteryColor, this::getBatteryFormatted));
         addDraw("main", new TextDraw("date", MID_CORNER.offset(0, 9), Phone::isBlocked, MAIN_COLOR, this::getDateFormatted));
 
-        // Show selected button in main page.
-        List<String> mainButtons = getPageButtons("main");
-        Draw lastButton = getDrawFromPage("main", mainButtons.get(mainButtons.size() - 1));
-        if (lastButton != null) {
-            addDraw("main", new TextDraw("selected",
-                    new Coord(-1, lastButton.getY() + 27),
-                    TOUCH_DRAW.and(Predicate.not(Phone::isBlocked)).and(Predicate.not(Phone::isShowError)),
-                    MAIN_COLOR,
-                    this::getCurrentButtonFormatted));
-        }
+        // Show the name of the selected button in the main page (at the bottom of the last button).
+        addDraw("main", new TextDraw("selected",
+                () -> {
+                    List<String> mainButtons = getPageButtons("main");
+                    Draw lastButton = getDrawFromPage("main", mainButtons.get(mainButtons.size() - 1));
+                    return lastButton != null ? new Coord(-1, lastButton.getY() + 27) : new Coord(-1, 27);
+                },
+                TOUCH_DRAW.and(Predicate.not(Phone::isBlocked)).and(Predicate.not(Phone::isShowError)),
+                MAIN_COLOR,
+                this::getCurrentButtonFormatted));
 
         InputStream fingerprint = plugin.getResource("icon/fingerprint.png");
         if (fingerprint != null) {
@@ -350,7 +353,7 @@ public final class Phone extends MapRenderer {
             int which = Integer.parseInt(name.split("-")[1]) - 1;
 
             addDraw("settings", new TextDraw(name + "-setting",
-                    button.getCoord().offset(7, 8),
+                    button.getCoord().get().offset(7, 8),
                     () -> getSettingColor(which),
                     () -> getSettingData(which),
                     18,
@@ -367,14 +370,14 @@ public final class Phone extends MapRenderer {
             int which = Integer.parseInt(name.split("-")[1]) - 1;
 
             addDraw("music", new TextDraw(name + "-artist",
-                    button.getCoord().offset(7, 4),
+                    button.getCoord().get().offset(7, 4),
                     () -> getSongColor(which),
                     () -> getSongInformation(which, true),
                     16,
                     95));
 
             addDraw("music", new TextDraw(name + "-song",
-                    button.getCoord().offset(7, 13),
+                    button.getCoord().get().offset(7, 13),
                     () -> getSongColor(which),
                     () -> getSongInformation(which, false),
                     16,
@@ -458,6 +461,10 @@ public final class Phone extends MapRenderer {
 
     public String getCurrentButtonFormatted() {
         if (currentButton == null || !getPageButtons("main").contains(currentButton)) return "";
+
+        CustomApp app = customMainApps.get(currentButton);
+        if (app != null) return app.command();
+
         return plugin.getConfig().getString("apps." + currentButton + ".name", "");
     }
 
@@ -586,10 +593,21 @@ public final class Phone extends MapRenderer {
             configuration.set("cracks", cracks.stream().map(Crack::toString).toList());
             configuration.set("background.name", backgroundImageName);
             configuration.set("background.from", isBackgroundImageFromGallery ? "GALLERY" : "DEFAULTS");
+            saveCustomApps();
 
             configuration.save(file);
         } catch (IOException exception) {
             exception.printStackTrace();
+        }
+    }
+
+    private void saveCustomApps() {
+        configuration.set("custom-apps", null);
+        for (Map.Entry<String, CustomApp> entry : customMainApps.entrySet()) {
+            String buttonName = entry.getKey();
+            CustomApp app = entry.getValue();
+            configuration.set("custom-apps." + buttonName + ".command", app.command());
+            configuration.set("custom-apps." + buttonName + ".icon", app.iconPath());
         }
     }
 
@@ -619,7 +637,6 @@ public final class Phone extends MapRenderer {
         battery = configuration.getInt("battery", battery);
 
         if (configuration.contains("phone-color")) {
-
             Color temp = PluginUtils.getColorFromString(configuration.getString("phone-color", colorToString(DEFAULT_PHONE_COLOR)));
             if (temp != null) {
                 phoneColor = temp;
@@ -644,6 +661,8 @@ public final class Phone extends MapRenderer {
             cracks.add(new Crack(Integer.parseInt(data[0]), coord));
         }
 
+        loadCustomApps();
+
         String backgroundName = configuration.getString("background.name"), from = configuration.getString("background.from");
         if (backgroundName == null || from == null) return;
 
@@ -651,7 +670,8 @@ public final class Phone extends MapRenderer {
 
         File temp = new File(isBackgroundImageFromGallery ? getGalleryFolder() : plugin.getBackgroundFolder(), backgroundName);
         if (!temp.exists()) {
-            // We do this because if the image is from gallery, it may exist in "pictures", but not in the real directory.
+            // We do this because if the image is from the gallery,
+            // it may exist in "pictures", but not in the real directory.
             backgroundImageName = null;
             createDefaultBackgroundIfNeeded();
             return;
@@ -659,6 +679,19 @@ public final class Phone extends MapRenderer {
 
         setPictureAsBackground(backgroundName, false);
         createDefaultBackgroundIfNeeded();
+    }
+
+    private void loadCustomApps() {
+        ConfigurationSection customAppsSection = configuration.getConfigurationSection("custom-apps");
+        if (customAppsSection == null) return;
+
+        for (String buttonName : customAppsSection.getKeys(false)) {
+            String command = configuration.getString("custom-apps." + buttonName + ".command");
+            String iconPath = configuration.getString("custom-apps." + buttonName + ".icon");
+            if (command == null || iconPath == null) continue;
+
+            customMainApps.put(buttonName, new CustomApp(command, iconPath));
+        }
     }
 
     private void createDefaultBackgroundIfNeeded() {
@@ -966,7 +999,7 @@ public final class Phone extends MapRenderer {
         InputStream onStream = plugin.getResource("icon/" + (getBoolSetting(setting) ? "on" : "off") + ".png");
         if (onStream == null) return;
 
-        new ImageDraw(setting.toConfigPath() + "-toggle", current.getCoord().offset(86, 7), ImageIO.read(onStream)).handleRender(this, canvas);
+        new ImageDraw(setting.toConfigPath() + "-toggle", current.getCoord().get().offset(86, 7), ImageIO.read(onStream)).handleRender(this, canvas);
     }
 
     public int getCurrentPictureIndex() {
@@ -975,27 +1008,35 @@ public final class Phone extends MapRenderer {
     }
 
     public int getFirstSongIndex() {
-        return music == null ? -1 : getIndex(music.keySet(), songs, Triple::getLeft);
+        return getSongIndex(Triple::getLeft);
     }
 
     public int getSecondSongIndex() {
-        return music == null ? -1 : getIndex(music.keySet(), songs, Triple::getMiddle);
+        return getSongIndex(Triple::getMiddle);
     }
 
     public int getThirdSongIndex() {
-        return music == null ? -1 : getIndex(music.keySet(), songs, Triple::getRight);
+        return getSongIndex(Triple::getRight);
+    }
+
+    private int getSongIndex(Function<Triple<?, ?, ?>, ?> getter) {
+        return music == null ? -1 : getIndex(music.keySet(), songs, getter);
+    }
+
+    private int getSettingIndex(Function<Triple<?, ?, ?>, ?> getter) {
+        return settings == null ? -1 : ArrayUtils.indexOf(Settings.values(), getter.apply(settings));
     }
 
     public int getFirstSettingIndex() {
-        return settings == null ? -1 : ArrayUtils.indexOf(Settings.values(), settings.getLeft());
+        return getSettingIndex(Triple::getLeft);
     }
 
     public int getSecondSettingIndex() {
-        return settings == null ? -1 : ArrayUtils.indexOf(Settings.values(), settings.getMiddle());
+        return getSettingIndex(Triple::getMiddle);
     }
 
     public int getThirdSettingIndex() {
-        return settings == null ? -1 : ArrayUtils.indexOf(Settings.values(), settings.getRight());
+        return getSettingIndex(Triple::getRight);
     }
 
     private int getIndex(Collection<?> collection, Triple<?, ?, ?> triple, Function<Triple<?, ?, ?>, ?> getter) {
@@ -1128,7 +1169,7 @@ public final class Phone extends MapRenderer {
                         lastButtons.put("gallery", "next");
                     }
 
-                    // If "previousPage" isn't null then it's safe to assume that "previousButton" isn't null either.
+                    // If "previousPage" isn't null, then it's safe to assume that "previousButton" isn't null either.
                     if (previousPage != null && previousPage.equals("gallery") && isBeforeLast) {
                         previousButton = "next";
                     }
@@ -1222,10 +1263,10 @@ public final class Phone extends MapRenderer {
 
             Draw time = getDrawFromPage("main", "time");
             if (time instanceof TextDraw text) {
-                if (text.getCoord().equals(MID_CORNER)) {
+                if (text.getCoord().get().equals(MID_CORNER)) {
                     alreadyChanged = true;
                 } else {
-                    text.setCoord(MID_CORNER);
+                    text.setCoord(() -> MID_CORNER);
                 }
             }
 
@@ -1321,7 +1362,8 @@ public final class Phone extends MapRenderer {
         if (images == null) return Collections.emptyMap();
 
         return Arrays.stream(images)
-                .map(this::getImages).filter(entry -> entry != null && !entry.getValue().isEmpty())
+                .map(this::getImages)
+                .filter(entry -> entry != null && !entry.getValue().isEmpty())
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         Map.Entry::getValue,
@@ -1345,7 +1387,7 @@ public final class Phone extends MapRenderer {
         List<String> buttons = getPageButtons("main");
         if (buttons == null) return;
 
-        if (buttons.size() > mainCoords.size()) {
+        if (buttons.size() >= mainCoords.size()) {
             plugin.getLogger().info("Some apps were left out because of space!");
         }
 
@@ -1364,6 +1406,38 @@ public final class Phone extends MapRenderer {
             }
 
             addDraw("main", new ImageDraw(button, coord, Predicate.not(Phone::isBlocked), ImageIO.read(app)));
+        }
+
+        initCustomApps(buttons);
+    }
+
+    private void initCustomApps(List<String> buttons) {
+        if (customMainApps.isEmpty()) return;
+
+        for (Map.Entry<String, CustomApp> entry : customMainApps.entrySet()) {
+            if (buttons.size() >= mainCoords.size()) break;
+
+            String buttonName = entry.getKey();
+            CustomApp app = entry.getValue();
+
+            buttons.add(buttonName);
+
+            int i = buttons.indexOf(buttonName);
+
+            Coord coord = getMainCoords().get(i);
+            String button = buttons.get(i);
+
+            InputStream appIcon = plugin.getResource(app.iconPath());
+
+            String[] data = app.iconPath().replace("icon/standard/", "").split("/");
+            if (data.length != 2) continue;
+
+            if (appIcon == null || !plugin.getAvailableIcons().contains(data[0] + ":" + data[1])) continue;
+
+            try {
+                addDraw("main", new ImageDraw(button, coord, Predicate.not(Phone::isBlocked), ImageIO.read(appIcon)));
+            } catch (IOException ignored) {
+            }
         }
     }
 
@@ -1387,7 +1461,7 @@ public final class Phone extends MapRenderer {
     }
 
     private void reloadGalleryPageButtons(boolean isBackgroundGallery) {
-        List<String> temp = isBackgroundGallery ? BACKGROUND_GALLERY_BUTTONS : GALLERY_BUTTONS;
+        List<String> temp = isBackgroundGallery ? backgroundGalleryButtons : galleryButtons;
         List<Coord> coords = PluginUtils.generateCoords(temp.size(), 24, 24, 14, 128, 0).stream().map(coord -> coord.offset(0, -coord.y() + 98)).toList();
 
         for (String button : temp) {
@@ -1551,7 +1625,7 @@ public final class Phone extends MapRenderer {
         // Here we use !NEXT_DRAW.test(this) instead of !next.canBeDrawn(this) because NO_TOUCH will return false.
         Draw next = getDrawFromPage("gallery", "next");
         if (next != null && !NEXT_DRAW.test(this)) {
-            setCurrentButton((isBackgroundGallery ? BACKGROUND_GALLERY_BUTTONS : GALLERY_BUTTONS).get(0));
+            setCurrentButton((isBackgroundGallery ? backgroundGalleryButtons : galleryButtons).get(0));
         }
     }
 
@@ -1584,7 +1658,7 @@ public final class Phone extends MapRenderer {
     }
 
     private boolean canReOpen(Player player, String which) {
-        // If was open, open again with previous button.
+        // If was open, open again with the previous button.
         if (previousPage != null && previousButton != null && previousPage.equals(which) && (!which.equals("gallery") || !isBackgroundGallery)) {
             reOpenPrevious(player, true);
             return true;
@@ -1819,7 +1893,7 @@ public final class Phone extends MapRenderer {
     }
 
     public List<String> getPageButtons(@NotNull String page) {
-        return PAGE_BUTTONS.get(page.equals("gallery") && isBackgroundGallery ? "backgrounds" : page);
+        return pageButtons.get(page.equals("gallery") && isBackgroundGallery ? "backgrounds" : page);
     }
 
     public void powerOff() {
@@ -1867,7 +1941,7 @@ public final class Phone extends MapRenderer {
                 .map(draw -> (TextDraw) draw)
                 .forEach(textDraw -> textDraw.setPreviousMessage(null));
 
-        // Set default page and button.
+        // Set the default page and button.
         setCurrentPage(DEFAULT_PAGE, getPageButtons(DEFAULT_PAGE).get(0));
 
         // Load data after turning off.
@@ -1921,8 +1995,8 @@ public final class Phone extends MapRenderer {
         return 100 * Config.BATTERY_MULTIPLIER.asInt();
     }
 
-    private static List<String> createGalleryButtonsByType(boolean isBackgroundGallery) {
-        return PAGE_BUTTONS.get(isBackgroundGallery ? "backgrounds" : "gallery").stream()
+    private List<String> createGalleryButtonsByType(boolean isBackgroundGallery) {
+        return pageButtons.get(isBackgroundGallery ? "backgrounds" : "gallery").stream()
                 .filter(button -> !IGNORE_MOVE_BUTTONS.contains(button))
                 .toList();
     }
