@@ -15,12 +15,12 @@ import java.util.Set;
 public enum WeatherType {
     CLEAR,
     CLOUDY,
-    PARTLY_CLOUDY, // Not used ATM.
+    @SuppressWarnings("unused") PARTLY_CLOUDY,
     RAINING,
     RAINING_AND_THUNDERING,
     SHINING,
     SNOWING,
-    THUNDERING;  // Not used ATM.
+    @SuppressWarnings("unused") THUNDERING;
 
     private static final Set<Biome> FROZEN_OCEAN = createBiomeSet("FROZEN_OCEAN", "DEEP_FROZEN_OCEAN");
     private static final Set<Biome> NO_RAIN = createBiomeSet("DESERT", "SAVANNA");

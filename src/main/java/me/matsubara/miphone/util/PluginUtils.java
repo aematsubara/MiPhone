@@ -1,6 +1,6 @@
 package me.matsubara.miphone.util;
 
-import com.cryptomorin.xseries.ReflectionUtils;
+import com.cryptomorin.xseries.reflection.XReflection;
 import com.google.common.base.Preconditions;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@SuppressWarnings("unused")
 public class PluginUtils {
 
     private static final Pattern PATTERN = Pattern.compile("&(#[\\da-fA-F]{6})");
@@ -66,7 +67,7 @@ public class PluginUtils {
             DAY_COLOR[i] = getInterpolatedColor(i * 1000);
         }
 
-        Class<?> craftMetaSkull = ReflectionUtils.getCraftClass("inventory.CraftMetaSkull");
+        @SuppressWarnings("deprecation") Class<?> craftMetaSkull = XReflection.getCraftClass("inventory.CraftMetaSkull");
         Preconditions.checkNotNull(craftMetaSkull);
 
         SET_PROFILE = getMethod(craftMetaSkull, "setProfile", GameProfile.class);

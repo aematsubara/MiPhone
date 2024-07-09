@@ -390,7 +390,7 @@ public final class MiPhonePlugin extends JavaPlugin {
             // The previous image.
             phone.switchCurrentPicture(true);
 
-            // First page, select next button.
+            // First page, select the next button.
             if (phone.getCurrentPictureIndex() == 0) {
                 phone.setCurrentButton("next");
             }
@@ -455,7 +455,7 @@ public final class MiPhonePlugin extends JavaPlugin {
 
         phone.playClickSound(player);
 
-        // Go to previous (main) page.
+        // Go to the previous (main) page.
         if (player.isSneaking() && !phone.isShowError()) {
             phone.reOpenPrevious(player, false);
             return;

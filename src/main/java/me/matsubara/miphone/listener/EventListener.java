@@ -1,6 +1,6 @@
 package me.matsubara.miphone.listener;
 
-import com.cryptomorin.xseries.ReflectionUtils;
+import com.cryptomorin.xseries.reflection.XReflection;
 import com.google.common.base.Preconditions;
 import me.matsubara.miphone.MiPhonePlugin;
 import me.matsubara.miphone.file.Messages;
@@ -58,10 +58,10 @@ public final class EventListener implements Listener {
     private static final MethodHandle RENDER;
 
     static {
-        Class<?> CRAFT_MAP_VIEW_CLAZZ = ReflectionUtils.getCraftClass("map.CraftMapView");
+        @SuppressWarnings("deprecation") Class<?> CRAFT_MAP_VIEW_CLAZZ = XReflection.getCraftClass("map.CraftMapView");
         Preconditions.checkNotNull(CRAFT_MAP_VIEW_CLAZZ);
 
-        Class<?> CRAFT_PLAYER_CLAZZ = ReflectionUtils.getCraftClass("entity.CraftPlayer");
+        @SuppressWarnings("deprecation") Class<?> CRAFT_PLAYER_CLAZZ = XReflection.getCraftClass("entity.CraftPlayer");
         Preconditions.checkNotNull(CRAFT_PLAYER_CLAZZ);
 
         RENDER = PluginUtils.getMethod(CRAFT_MAP_VIEW_CLAZZ, "render", CRAFT_PLAYER_CLAZZ);
@@ -330,7 +330,7 @@ public final class EventListener implements Listener {
         phone.setEnabled(false);
         phone.setChargingAt(frame);
 
-        // Here, we need to force the render of the map, otherwise it'll take some extra seconds.
+        // Here, we need to force the render of the map; otherwise it'll take some extra seconds.
         try {
             if (RENDER != null) RENDER.invoke(phone.getView(), player);
         } catch (Throwable throwable) {

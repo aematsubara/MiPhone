@@ -383,7 +383,7 @@ public final class Phone extends MapRenderer {
                     16,
                     95));
 
-            // Show alert dialog if music length is lower than 3.
+            // Show alert window if music length is lower than 3.
 
             Coord coord = new Coord(mainCoords.get(1).x(), button.getY());
 

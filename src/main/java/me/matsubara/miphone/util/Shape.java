@@ -51,7 +51,7 @@ public final class Shape {
             char key = split.length > 1 ? split[1].charAt(0) : ' ';
 
             if (shaped) {
-                // Empty space are used for AIR.
+                // Empty space is used for AIR.
                 if (key == ' ') continue;
                 ((ShapedRecipe) recipe).setIngredient(key, type);
             } else {
