@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 public enum WeatherType {
@@ -96,6 +97,6 @@ public enum WeatherType {
     }
 
     public @NotNull String toConfigPath() {
-        return name().toLowerCase().replace("_", "-");
+        return name().toLowerCase(Locale.ROOT).replace("_", "-");
     }
 }

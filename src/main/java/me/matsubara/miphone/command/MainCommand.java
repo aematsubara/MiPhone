@@ -26,10 +26,8 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -60,7 +58,7 @@ public record MainCommand(MiPhonePlugin plugin) implements CommandExecutor, TabC
         }
 
         boolean noArgs = args.length == 0;
-        if (noArgs || (!args[0].equalsIgnoreCase("create-app") && args.length > 3) || !COMMAND_ARGS.contains(args[0].toLowerCase())) {
+        if (noArgs || (!args[0].equalsIgnoreCase("create-app") && args.length > 3) || !COMMAND_ARGS.contains(args[0].toLowerCase(Locale.ROOT))) {
             if (noArgs) HELP.forEach(player::sendMessage);
             else messages.send(player, Messages.Message.INVALID_COMMAND);
             return true;
@@ -263,7 +261,7 @@ public record MainCommand(MiPhonePlugin plugin) implements CommandExecutor, TabC
             return getRandomColorFromConfig();
         }
 
-        Color color = plugin.getColors().get(args[1].toLowerCase());
+        Color color = plugin.getColors().get(args[1].toLowerCase(Locale.ROOT));
         if (color != null) return color;
 
         if (Config.RANDOM_COLOR_IF_COLOR_DOES_NOT_EXISTS.asBool()) {

@@ -53,8 +53,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
@@ -842,7 +842,7 @@ public final class Phone extends MapRenderer {
         }
 
         try {
-            InputStream resource = plugin.getResource("weather/" + key.toLowerCase() + ".png");
+            InputStream resource = plugin.getResource("weather/" + key.toLowerCase(Locale.ROOT) + ".png");
             if (resource == null) return;
 
             WEATHER_CACHE.put(key, temp = ImageIO.read(resource));
@@ -1113,18 +1113,26 @@ public final class Phone extends MapRenderer {
         Sound sound;
         float volume = 0.5f, pitch = 1.0f;
         if (data.length == 1) {
-            sound = PluginUtils.getOrDefault(Sound.class, soundData, defaultSound);
+            sound = getSound(soundData, defaultSound);
         } else if (data.length == 2) {
-            sound = PluginUtils.getOrDefault(Sound.class, data[0], defaultSound);
+            sound = getSound(data[0], defaultSound);
             volume = Float.parseFloat(data[1]);
         } else if (data.length == 3) {
-            sound = PluginUtils.getOrDefault(Sound.class, data[0], defaultSound);
+            sound = getSound(data[0], defaultSound);
             volume = Float.parseFloat(data[1]);
             pitch = Float.parseFloat(data[2]);
         } else return;
 
         if (player != null) player.playSound(at, sound, volume, pitch);
         else if (at.getWorld() != null) at.getWorld().playSound(at, sound, volume, pitch);
+    }
+
+    private Sound getSound(String name, Sound defaultSound) {
+        try {
+            return Sound.valueOf(name);
+        } catch (Exception exception) {
+            return defaultSound;
+        }
     }
 
     public void takePicture(@NotNull Player player) {

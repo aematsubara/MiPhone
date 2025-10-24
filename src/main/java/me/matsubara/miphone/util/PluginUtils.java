@@ -2,6 +2,7 @@ package me.matsubara.miphone.util;
 
 import com.cryptomorin.xseries.reflection.XReflection;
 import com.google.common.base.Preconditions;
+import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import me.matsubara.miphone.phone.render.Coord;
@@ -10,8 +11,11 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.bukkit.Bukkit;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.map.MapPalette;
+import org.bukkit.profile.PlayerProfile;
+import org.bukkit.profile.PlayerTextures;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +32,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.List;
@@ -45,8 +50,10 @@ public class PluginUtils {
     private static final org.bukkit.Color[] COLORS;
     public static final Color[] DAY_COLOR;
 
-    private static final MethodHandle SET_PROFILE;
-    private static final MethodHandle PROFILE;
+    private static final Class<?> CRAFT_META_SKULL = XReflection.getCraftClass("inventory.CraftMetaSkull");
+
+    private static final MethodHandle SET_PROFILE = Reflection.getMethod(CRAFT_META_SKULL, "setProfile", false, GameProfile.class);
+    private static final MethodHandle SET_OWNER_PROFILE = Reflection.getMethod(SkullMeta.class, "setOwnerProfile", false, PlayerProfile.class);
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
@@ -66,12 +73,6 @@ public class PluginUtils {
         for (int i = 0; i < 24; i++) {
             DAY_COLOR[i] = getInterpolatedColor(i * 1000);
         }
-
-        @SuppressWarnings("deprecation") Class<?> craftMetaSkull = XReflection.getCraftClass("inventory.CraftMetaSkull");
-        Preconditions.checkNotNull(craftMetaSkull);
-
-        SET_PROFILE = getMethod(craftMetaSkull, "setProfile", GameProfile.class);
-        PROFILE = getFieldSetter(craftMetaSkull, "profile");
     }
 
     public static MethodHandle getFieldGetter(Class<?> clazz, String name) {
@@ -124,23 +125,45 @@ public class PluginUtils {
     }
 
     public static void applySkin(SkullMeta meta, UUID uuid, String texture, boolean isUrl) {
-        GameProfile profile = new GameProfile(uuid, null);
-
-        String textureValue = texture;
-        if (isUrl) {
-            textureValue = "http://textures.minecraft.net/texture/" + textureValue;
-            byte[] encodedData = Base64.getEncoder().encode(String.format("{textures:{SKIN:{url:\"%s\"}}}", textureValue).getBytes());
-            textureValue = new String(encodedData);
-        }
-
-        profile.getProperties().put("textures", new Property("textures", textureValue));
-
         try {
             // If the serialized profile field isn't set, ItemStack#isSimilar() and ItemStack#equals() throw an error.
-            (SET_PROFILE == null ? PROFILE : SET_PROFILE).invoke(meta, profile);
+            if (SET_PROFILE != null) {
+                GameProfile profile = new GameProfile(uuid, "");
+
+                String value = isUrl ? new String(Base64.getEncoder().encode(String
+                        .format("{textures:{SKIN:{url:\"%s\"}}}", "http://textures.minecraft.net/texture/" + texture)
+                        .getBytes())) : texture;
+
+                profile.getProperties().put("textures", new Property("textures", value));
+                SET_PROFILE.invoke(meta, profile);
+            } else if (SET_OWNER_PROFILE != null) {
+                PlayerProfile profile = Bukkit.createPlayerProfile(uuid, "");
+
+                PlayerTextures textures = profile.getTextures();
+                String url = isUrl ? "http://textures.minecraft.net/texture/" + texture : getURLFromTexture(texture);
+                textures.setSkin(new URL(url));
+
+                profile.setTextures(textures);
+                SET_OWNER_PROFILE.invoke(meta, profile);
+            }
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
+    }
+
+    public static String getURLFromTexture(String texture) {
+        // String decoded = new String(Base64.getDecoder().decode(texture));
+        // return new URL(decoded.substring("{\"textures\":{\"SKIN\":{\"url\":\"".length(), decoded.length() - "\"}}}".length()));
+
+        // Decode B64.
+        String decoded = new String(Base64.getDecoder().decode(texture));
+
+        // Get url from json.
+        return JsonParser.parseString(decoded).getAsJsonObject()
+                .getAsJsonObject("textures")
+                .getAsJsonObject("SKIN")
+                .get("url")
+                .getAsString();
     }
 
     public static @NotNull String translate(String message) {

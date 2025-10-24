@@ -138,7 +138,7 @@ public final class MiPhonePlugin extends JavaPlugin {
 
         for (String string : Config.SAFE_DROP_BLOCKS.asStringList()) {
             if (string.startsWith("$")) {
-                Tag<Material> tag = Bukkit.getTag(Tag.REGISTRY_BLOCKS, NamespacedKey.minecraft(string.substring(1).toLowerCase()), Material.class);
+                Tag<Material> tag = Bukkit.getTag(Tag.REGISTRY_BLOCKS, NamespacedKey.minecraft(string.substring(1).toLowerCase(Locale.ROOT)), Material.class);
                 if (tag != null) safeDropBlocks.addAll(tag.getValues());
                 else getLogger().warning("Can't find tag {" + string + "}!");
                 continue;

@@ -198,10 +198,6 @@ public class ConfigFileUtils {
             }
         }
 
-        for (String flag : config.getStringList(path + ".flags")) {
-            builder.addItemFlags(ItemFlag.valueOf(flag.toUpperCase()));
-        }
-
         int modelData = config.getInt(path + ".model-data", Integer.MIN_VALUE);
         if (modelData != Integer.MIN_VALUE) builder.setCustomModelData(modelData);
 
@@ -209,7 +205,7 @@ public class ConfigFileUtils {
             if (Strings.isNullOrEmpty(enchantmentString)) continue;
             String[] data = PluginUtils.splitData(enchantmentString);
 
-            Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(data[0].toLowerCase()));
+            Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(data[0].toLowerCase(Locale.ROOT)));
 
             int level;
             try {
@@ -219,6 +215,10 @@ public class ConfigFileUtils {
             }
 
             if (enchantment != null) builder.addEnchantment(enchantment, level);
+        }
+
+        for (String flag : config.getStringList(path + ".flags")) {
+            builder.addItemFlags(ItemFlag.valueOf(flag.toUpperCase(Locale.ROOT)));
         }
 
         String tippedArrow = config.getString(path + ".tipped");

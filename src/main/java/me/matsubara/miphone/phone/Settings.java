@@ -4,6 +4,7 @@ import lombok.Getter;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Locale;
 import java.util.Map;
 
 @Getter
@@ -32,7 +33,7 @@ public enum Settings {
     }
 
     public @NotNull String toConfigPath() {
-        return name().toLowerCase().replace("_", "-");
+        return name().toLowerCase(Locale.ROOT).replace("_", "-");
     }
 
     @Contract("_ -> new")
